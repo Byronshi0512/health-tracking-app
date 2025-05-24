@@ -10,6 +10,16 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def main():
+    st.write("# 测试应用")
+    st.write("这是一个测试页面")
+    
+    if st.button("测试按钮"):
+        st.write("按钮点击成功！")
+
+if __name__ == "__main__":
+    main()
+
 try:
     # 页面配置
     st.set_page_config(
