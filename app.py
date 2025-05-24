@@ -170,4 +170,16 @@ try:
 
 except Exception as e:
     st.error(f"应用程序发生错误: {str(e)}")
-    logger.error(f"Application error: {str(e)}") 
+    logger.error(f"Application error: {str(e)}")
+
+st.title("健康数据追踪测试")
+st.write("如果您能看到这条消息，说明应用已经成功运行！")
+
+# 添加一个简单的输入框
+name = st.text_input("请输入您的名字")
+if name:
+    st.write(f"你好，{name}！")
+
+# 添加一个简单的按钮
+if st.button("点击测试"):
+    st.success("按钮工作正常！") 
