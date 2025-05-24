@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def main():
-    st.write("# 测试应用")
+    st.write("# 健康数据追踪")
     st.write("这是一个测试页面")
     
     if st.button("测试按钮"):
