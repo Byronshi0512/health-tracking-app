@@ -1,6 +1,8 @@
 import streamlit as st
 import json
 from datetime import datetime
+import plotly.express as px
+import pandas as pd
 
 def load_data():
     try:
@@ -12,6 +14,52 @@ def load_data():
 def save_data(data):
     with open('health_data.json', 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+def create_visualizations(health_data):
+    if not health_data:
+        return None
+    
+    # 转换为 DataFrame
+    df = pd.DataFrame(health_data)
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # 创建图表
+    charts = {}
+    
+    # 体重趋势图
+    weight_fig = px.line(df, x='date', y='weight',
+                        title='体重变化趋势',
+                        labels={'weight': '体重 (kg)', 'date': '日期'})
+    weight_fig.update_layout(
+        xaxis_title='日期',
+        yaxis_title='体重 (kg)',
+        hovermode='x unified'
+    )
+    charts['weight'] = weight_fig
+    
+    # 步数柱状图
+    steps_fig = px.bar(df, x='date', y='steps',
+                      title='每日步数',
+                      labels={'steps': '步数', 'date': '日期'})
+    steps_fig.update_layout(
+        xaxis_title='日期',
+        yaxis_title='步数',
+        hovermode='x unified'
+    )
+    charts['steps'] = steps_fig
+    
+    # 睡眠时间折线图
+    sleep_fig = px.line(df, x='date', y='sleep_hours',
+                       title='睡眠时间变化',
+                       labels={'sleep_hours': '睡眠时间 (小时)', 'date': '日期'})
+    sleep_fig.update_layout(
+        xaxis_title='日期',
+        yaxis_title='睡眠时间 (小时)',
+        hovermode='x unified'
+    )
+    charts['sleep'] = sleep_fig
+    
+    return charts
 
 def main():
     st.title("健康数据追踪")
@@ -39,9 +87,24 @@ def main():
             save_data(health_data)
             st.success("数据已保存！")
     
-    # 主页面 - 数据显示
-    st.header("历史记录")
+    # 主页面 - 数据显示和可视化
     if health_data:
+        # 创建可视化图表
+        charts = create_visualizations(health_data)
+        
+        # 显示图表
+        st.header("数据可视化")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.plotly_chart(charts['weight'], use_container_width=True)
+            st.plotly_chart(charts['sleep'], use_container_width=True)
+        
+        with col2:
+            st.plotly_chart(charts['steps'], use_container_width=True)
+        
+        # 显示历史记录
+        st.header("历史记录")
         for record in reversed(health_data):
             with st.expander(f"📅 {record['date']}"):
                 st.write(f"体重: {record['weight']} kg")
