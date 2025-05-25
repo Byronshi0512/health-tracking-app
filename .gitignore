@@ -16,6 +16,7 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -30,8 +31,12 @@ ENV/
 *.swp
 *.swo
 
+# OS
+.DS_Store
+Thumbs.db
+
 # Streamlit
-.streamlit/
+.streamlit/secrets.toml
 
 # Data files
 health_data.json 
