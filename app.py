@@ -170,7 +170,7 @@ def edit_record(record_index, health_data):
         })
         save_data(health_data)
         st.success("数据已更新！")
-        st.experimental_rerun()
+        st.rerun()
 
 def main():
     st.title("健康数据追踪")
@@ -194,16 +194,16 @@ def main():
                                  if record['date'] == date_str), None)
             
             if existing_record is not None:
-                if st.warning("该日期已存在记录。是否要更新？"):
-                    if st.button("确认更新", key="confirm_update"):
-                        health_data[existing_record].update({
-                            "weight": weight,
-                            "steps": steps,
-                            "sleep_hours": sleep_hours
-                        })
-                        save_data(health_data)
-                        st.success("数据已更新！")
-                        st.experimental_rerun()
+                st.warning("该日期已存在记录。是否要更新？")
+                if st.button("确认更新", key="confirm_update"):
+                    health_data[existing_record].update({
+                        "weight": weight,
+                        "steps": steps,
+                        "sleep_hours": sleep_hours
+                    })
+                    save_data(health_data)
+                    st.success("数据已更新！")
+                    st.rerun()
             else:
                 new_record = {
                     "date": date_str,
@@ -214,7 +214,7 @@ def main():
                 health_data.append(new_record)
                 save_data(health_data)
                 st.success("数据已保存！")
-                st.experimental_rerun()
+                st.rerun()
     
     # 主页面 - 数据显示和可视化
     if health_data:
