@@ -3,22 +3,85 @@ import json
 from datetime import datetime
 import plotly.express as px
 import pandas as pd
+import os
+import shutil
+from pathlib import Path
+import fcntl
+
+# 定义数据文件路径
+DATA_DIR = Path.home() / '.health_tracker'
+DATA_FILE = DATA_DIR / 'health_data.json'
+BACKUP_FILE = DATA_DIR / 'health_data.backup.json'
+
+def ensure_data_dir():
+    """确保数据目录存在"""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+def create_backup():
+    """创建数据文件的备份"""
+    if DATA_FILE.exists():
+        shutil.copy2(DATA_FILE, BACKUP_FILE)
 
 def load_data():
+    """加载数据，包含错误处理和恢复机制"""
+    ensure_data_dir()
+    
     try:
-        with open('health_data.json', 'r') as f:
-            data = json.load(f)
-            # 确保数据按日期排序
-            data.sort(key=lambda x: x['date'], reverse=True)
-            return data
-    except FileNotFoundError:
+        if DATA_FILE.exists():
+            with open(DATA_FILE, 'r') as f:
+                try:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                    data = json.load(f)
+                    # 确保数据按日期排序
+                    data.sort(key=lambda x: x['date'], reverse=True)
+                    return data
+                except json.JSONDecodeError:
+                    # 如果主文件损坏，尝试从备份恢复
+                    if BACKUP_FILE.exists():
+                        st.warning("主数据文件损坏，正在从备份恢复...")
+                        with open(BACKUP_FILE, 'r') as backup:
+                            data = json.load(backup)
+                            save_data(data)  # 恢复主文件
+                            return data
+                    return []
+                finally:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        return []
+    except Exception as e:
+        st.error(f"加载数据时出错: {str(e)}")
         return []
 
 def save_data(data):
-    # 保存前先排序
-    data.sort(key=lambda x: x['date'], reverse=True)
-    with open('health_data.json', 'w') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    """保存数据，包含错误处理和备份机制"""
+    ensure_data_dir()
+    
+    # 创建备份
+    create_backup()
+    
+    try:
+        # 保存前先排序
+        data.sort(key=lambda x: x['date'], reverse=True)
+        
+        # 使用临时文件进行原子写入
+        temp_file = DATA_FILE.with_suffix('.tmp')
+        with open(temp_file, 'w') as f:
+            try:
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            finally:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        
+        # 原子性地替换文件
+        temp_file.rename(DATA_FILE)
+        
+    except Exception as e:
+        st.error(f"保存数据时出错: {str(e)}")
+        # 如果保存失败，尝试恢复备份
+        if BACKUP_FILE.exists():
+            shutil.copy2(BACKUP_FILE, DATA_FILE)
+            st.warning("已从备份恢复数据")
 
 def create_visualizations(health_data):
     if not health_data:
@@ -131,14 +194,16 @@ def main():
                                  if record['date'] == date_str), None)
             
             if existing_record is not None:
-                if st.warning("该日期已存在记录。是否要更新？") and st.button("确认更新"):
-                    health_data[existing_record].update({
-                        "weight": weight,
-                        "steps": steps,
-                        "sleep_hours": sleep_hours
-                    })
-                    save_data(health_data)
-                    st.success("数据已更新！")
+                if st.warning("该日期已存在记录。是否要更新？"):
+                    if st.button("确认更新", key="confirm_update"):
+                        health_data[existing_record].update({
+                            "weight": weight,
+                            "steps": steps,
+                            "sleep_hours": sleep_hours
+                        })
+                        save_data(health_data)
+                        st.success("数据已更新！")
+                        st.experimental_rerun()
             else:
                 new_record = {
                     "date": date_str,
@@ -149,6 +214,7 @@ def main():
                 health_data.append(new_record)
                 save_data(health_data)
                 st.success("数据已保存！")
+                st.experimental_rerun()
     
     # 主页面 - 数据显示和可视化
     if health_data:
